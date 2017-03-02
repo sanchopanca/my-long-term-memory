@@ -8,17 +8,14 @@ my $dbh = DBI->connect('DBI:SQLite:dbname=mltm.db', '', '');
 
 sub add_entry {
     my ($title, $text, $tags) = @_;
-    my @tags_ids;
-    for my $tag (@{ $tags }) {
-        push(@tags_ids, get_tag_id($tag));
-    }
+    my $tags_ids = _get_tags_ids($tags);
     my $insert_statement = <<'    --';
     INSERT INTO entries (title, content)
     VALUES (?, ?)
     --
     $dbh->do($insert_statement, $title, $text);
     my $entry_id = _get_last_inserted_id('entries');
-    _connect_tags_to_entry(\@tags_ids);
+    _connect_tags_to_entry($tags_ids, $entry_id);
 }
 
 sub get_tag_id {
@@ -36,6 +33,15 @@ sub search_arbitrary_text {
 
 sub update_entry {
     my ($id, $title, $text, $tags) = @_;
+    my $insert_statement = <<'    --';
+    UPDATE entries SET
+        title = ?,
+        content = ?
+    WHERE
+        rowid = ?
+    --
+    my $tags_ids = _get_tags_ids($tags);
+    _connect_tags_to_entry($tags_ids, $id);
 }
 
 sub _connect_tags_to_entry {
@@ -45,4 +51,13 @@ sub _connect_tags_to_entry {
 sub _get_last_inserted_id {
     my ($table) = @_;
     return 0;
+}
+
+sub _get_tags_ids {
+    my ($tags) = @_;
+    my @tags_ids;
+    for my $tag (@{ $tags }) {
+        push(@tags_ids, get_tag_id($tag));
+    }
+    return \@tags_ids;
 }
