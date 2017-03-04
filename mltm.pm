@@ -20,7 +20,22 @@ sub add_entry {
 
 sub get_tag_id {
     my ($tag) = @_;
-    return 0;
+    my $select_statement = <<'    --';
+    SELECT rowid
+    FROM tags
+    WHERE tag = ?
+    --
+    my $rows = $dbh->selectall_arrayref($select_statement, tag);
+    if (@{ $rows } > 0)) {
+        return $rows->[0][0];
+    } else {
+        my $insert_statement = <<'        --';
+        INSERT into tags (tag)
+        VALUES (?)
+        --
+        $db->do($insert_statement, $tag);
+        return _get_last_inserted_id('tags');
+    }
 }
 
 sub search_by_tag_id {
