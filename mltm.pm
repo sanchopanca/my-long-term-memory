@@ -25,15 +25,15 @@ sub get_tag_id {
     FROM tags
     WHERE tag = ?
     --
-    my $rows = $dbh->selectall_arrayref($select_statement, tag);
-    if (@{ $rows } > 0)) {
+    my $rows = $dbh->selectall_arrayref($select_statement, $tag);
+    if (@{ $rows } > 0) {
         return $rows->[0][0];
     } else {
         my $insert_statement = <<'        --';
         INSERT into tags (tag)
         VALUES (?)
         --
-        $db->do($insert_statement, $tag);
+        $dbh->do($insert_statement, $tag);
         return _get_last_inserted_id('tags');
     }
 }
@@ -55,13 +55,25 @@ sub update_entry {
     WHERE
         rowid = ?
     --
-    $dbh->do($update_statement, $title, $text, $id)
+    $dbh->do($update_statement, $title, $text, $id);
     my $tags_ids = _get_tags_ids($tags);
     _update_tags_to_entry($tags_ids, $id);
 }
 
 sub _update_tags_to_entry {
     my ($tags_ids, $entry_id) = @_;
+    my $delete_statement = <<'    --';
+    DELETE FROM tags_entries
+    WHERE entry_id = ?
+    --
+    $dbh->do($delete_statement, $entry_id);
+    for my $tag_id (@{ $tags_ids }) {
+        my $insert_statement = <<'        --';
+        INSERT INTO tags_entries (tag_id, entry_id)
+        VALUES (?, ?)
+        --
+        $dbh->do($insert_statement, $tag_id, $entry_id);
+    }
 }
 
 sub _get_last_inserted_id {
