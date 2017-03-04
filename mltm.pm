@@ -48,18 +48,19 @@ sub search_arbitrary_text {
 
 sub update_entry {
     my ($id, $title, $text, $tags) = @_;
-    my $insert_statement = <<'    --';
+    my $update_statement = <<'    --';
     UPDATE entries SET
         title = ?,
         content = ?
     WHERE
         rowid = ?
     --
+    $dbh->do($update_statement, $title, $text, $id)
     my $tags_ids = _get_tags_ids($tags);
-    _connect_tags_to_entry($tags_ids, $id);
+    _update_tags_to_entry($tags_ids, $id);
 }
 
-sub _connect_tags_to_entry {
+sub _update_tags_to_entry {
     my ($tags_ids, $entry_id) = @_;
 }
 
