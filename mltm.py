@@ -4,16 +4,29 @@ from database import DB
 db = DB()
 
 
+# TODO Optimize
 class Entry:
-    def __init__(self, id, title, text, tags):
+    def __init__(self, id, title, content, tags):
         self.id = id
         self.title = title
-        self.text = text
+        self.content = content
         self.tags = tags
 
     def __repr__(self):
-        return 'id: {}, title: {}, text: {}, tags: {}'.\
-            format(self.id, self.title, self.text, self.tags)
+        return 'id: {}, title: {}, content: {}, tags: {}'.\
+            format(self.id, self.title, self.content, self.tags)
+
+    def match(self, text):
+        if text in self.tags:
+            return True
+        if text in self.title:
+            return True
+        if text in self.content:
+            return True
+        for tag in self.tags:
+            if text in tag:
+                return True
+        return False
 
     @staticmethod
     def add_entry(title, text, tags):
@@ -44,8 +57,8 @@ class Entry:
         WHERE tags_entries.entry_id = ?
         '''
         tags = _transpose(db.execute_and_fetch_all(select_statement, (entry_id,)))
-        title, text = entry
-        return Entry(entry_id, title, text, tags)
+        title, content = entry
+        return Entry(entry_id, title, content, tags)
 
     @staticmethod
     def search_by_tag_id(tag_id):
@@ -59,8 +72,17 @@ class Entry:
         return [Entry.get_entry_by_id(entry_id) for entry_id in entries_ids]
 
     @staticmethod
+    def get_all():
+        select_statement = '''
+        SELECT rowid
+        FROM entries
+        '''
+        ids = _transpose(db.execute_and_fetch_all(select_statement))
+        return [Entry.get_entry_by_id(id) for id in ids]
+
+    @staticmethod
     def search_arbitrary_text(text):
-        pass
+        return [entry for entry in Entry.get_all() if entry.match(text)]
 
 
 def get_tag_id(tag, insert_new=False):
@@ -115,4 +137,4 @@ def _transpose(x):
     return list(next(zip(*x), ()))  # Sorry
 
 if __name__ == '__main__':
-    print(Entry.search_by_tag_id(1))
+    print(Entry.search_arbitrary_text('txt'))
