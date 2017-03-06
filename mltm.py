@@ -15,37 +15,52 @@ class Entry:
         return 'id: {}, title: {}, text: {}, tags: {}'.\
             format(self.id, self.title, self.text, self.tags)
 
+    @staticmethod
+    def add_entry(title, text, tags):
+        tags_ids = _get_tags_ids(tags)
+        insert_statement = '''
+        INSERT INTO entries (title, content)
+        VALUES (?, ?)
+        '''
+        db.execute(insert_statement, (title, text))
+        entry_id = db.get_last_rowid()
+        _update_tags_to_entry(tags_ids, entry_id)
 
-def add_entry(title, text, tags):
-    tags_ids = _get_tags_ids(tags)
-    insert_statement = '''
-    INSERT INTO entries (title, content)
-    VALUES (?, ?)
-    '''
-    db.execute(insert_statement, (title, text))
-    entry_id = db.get_last_rowid()
-    _update_tags_to_entry(tags_ids, entry_id)
+    @staticmethod
+    def get_entry_by_id(entry_id):
+        select_statement = '''
+        SELECT entries.title,
+               entries.content
+        FROM entries
+        WHERE rowid = ?
+        '''
+        entry = db.execute_and_fetch_one(select_statement, (entry_id,))
+        if entry is None:
+            return None
+        select_statement = '''
+        SELECT tags.name
+        FROM tags
+        INNER JOIN tags_entries ON tags.rowid = tags_entries.tag_id
+        WHERE tags_entries.entry_id = ?
+        '''
+        tags = _transpose(db.execute_and_fetch_all(select_statement, (entry_id,)))
+        title, text = entry
+        return Entry(entry_id, title, text, tags)
 
+    @staticmethod
+    def search_by_tag_id(tag_id):
+        select_statement = '''
+        SELECT entries.rowid
+        FROM entries
+        INNER JOIN tags_entries ON entries.rowid = tags_entries.entry_id
+        WHERE tags_entries.tag_id = ?
+        '''
+        entries_ids = _transpose(db.execute_and_fetch_all(select_statement, (tag_id,)))
+        return [Entry.get_entry_by_id(entry_id) for entry_id in entries_ids]
 
-def get_entry_by_id(entry_id):
-    select_statement = '''
-    SELECT entries.title,
-           entries.content
-    FROM entries
-    WHERE rowid = ?
-    '''
-    entry = db.execute_and_fetch_one(select_statement, (entry_id,))
-    if entry is None:
-        return None
-    select_statement = '''
-    SELECT tags.name
-    FROM tags
-    INNER JOIN tags_entries ON tags.rowid = tags_entries.tag_id
-    WHERE tags_entries.entry_id = ?
-    '''
-    tags = _transpose(db.execute_and_fetch_all(select_statement, (entry_id,)))
-    title, text = entry
-    return Entry(entry_id, title, text, tags)
+    @staticmethod
+    def search_arbitrary_text(text):
+        pass
 
 
 def get_tag_id(tag, insert_new=False):
@@ -63,21 +78,6 @@ def get_tag_id(tag, insert_new=False):
         db.execute(insert_statement, (tag,))
         tag_id = db.get_last_rowid()
     return tag_id
-
-
-def search_by_tag_id(tag_id):
-    select_statement = '''
-    SELECT entries.rowid
-    FROM entries
-    INNER JOIN tags_entries ON entries.rowid = tags_entries.entry_id
-    WHERE tags_entries.tag_id = ?
-    '''
-    entries_ids = _transpose(db.execute_and_fetch_all(select_statement, (tag_id,)))
-    return [get_entry_by_id(entry_id) for entry_id in entries_ids]
-
-
-def search_arbitrary_text(text):
-    pass
 
 
 def update_entry(entry_id, title, text, tags):
@@ -115,4 +115,4 @@ def _transpose(x):
     return list(next(zip(*x), ()))  # Sorry
 
 if __name__ == '__main__':
-    print(search_by_tag_id(1))
+    print(Entry.search_by_tag_id(1))
