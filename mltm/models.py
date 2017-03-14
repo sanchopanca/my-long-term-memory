@@ -1,4 +1,4 @@
-from database import DB
+from mltm.database import DB
 
 
 db = DB()
@@ -27,6 +27,9 @@ class Entry:
             if text in tag:
                 return True
         return False
+
+    def display(self):
+        return 'ID: {}\n{}\n\n{}\n{}\n'.format(self.id, self.title, self.content, ', '.join(self.tags))
 
     @staticmethod
     def add_entry(title, text, tags):
